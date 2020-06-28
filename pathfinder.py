@@ -157,13 +157,21 @@ class App:
         self.matrix = np.zeros(n**2).reshape(n, n)
         for i in range(self.rows*self.columns):
             if i % self.columns != 0:
-                self.matrix[i][i-1] = 1
+                self.matrix[i][i-1] = 10
             if i % self.columns != (self.columns-1):
-                self.matrix[i][i+1] = 1
+                self.matrix[i][i+1] = 10
             if i > self.columns-1:
-                self.matrix[i][i-self.columns] = 1
+                self.matrix[i][i-self.columns] = 10
             if i < self.columns*self.rows - self.columns:
-                self.matrix[i][i+self.columns] = 1
+                self.matrix[i][i+self.columns] = 10
+            if i > self.columns-1 and i % self.columns != 0:
+                self.matrix[i][i-self.columns-1] = 14
+            if i > self.columns-1 and i % self.columns != (self.columns-1):
+                self.matrix[i][i-self.columns+1] = 14
+            if i < self.columns*self.rows - self.columns and i % self.columns != 0:
+                self.matrix[i][i+self.columns-1] = 14
+            if i < self.columns*self.rows - self.columns and i % self.columns != (self.columns-1):
+                self.matrix[i][i+self.columns+1] = 14
         return self.matrix
 
     def remove_node(self):
