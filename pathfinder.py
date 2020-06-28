@@ -29,9 +29,25 @@ class App:
         self.root.bind("<space>", lambda event: self.set_cursor())
         self.instruction = tk.Label(self.root, text="Press space to enable/disable cursor,"
                                     + "\nRight-click to deselect", bg="gray9", fg="white")
+        self.lbl_frame = tk.Frame(self.root, bg="gray9")
         self.phase_status = tk.Label(self.root, text="Disabled cursor", fg="red", bg="gray9")
         self.next_label = tk.Label(self.root, text="Press \"P\" when done", fg="white", bg="gray9")
         self.current = tk.Label(self.root, text="")
+        self.p0 = tk.Label(self.lbl_frame, text="Create barrier", fg="white", bg="gray25")
+        self.p1 = tk.Label(self.lbl_frame, text="Start point", fg="white", bg="gray9")
+        self.p2 = tk.Label(self.lbl_frame, text="End point", fg="white", bg="gray9")
+        self.p3 = tk.Label(self.lbl_frame, text="Algorithm", fg="white", bg="gray9")
+        self.i1 = tk.Label(self.lbl_frame, text="|", fg="white", bg="gray9")
+        self.i2 = tk.Label(self.lbl_frame, text="|", fg="white", bg="gray9")
+        self.i3 = tk.Label(self.lbl_frame, text="|", fg="white", bg="gray9")
+        self.p0.grid(row=0, column=0)
+        self.i1.grid(row=0, column=1)
+        self.p1.grid(row=0, column=2)
+        self.i2.grid(row=0, column=3)
+        self.p2.grid(row=0, column=4)
+        self.i3.grid(row=0, column=5)
+        self.p3.grid(row=0, column=6)
+        self.lbl_frame.pack(pady=5)
         self.instruction.pack()
         self.phase_status.pack()
         self.canvas.pack(padx=10)
@@ -72,17 +88,23 @@ class App:
             self.instruction.configure(text="Left-click to select a start point"
                                        + "\nRight-click on it to deselect it")
             self.phase_status.configure(text="Start point", fg="green")
+            self.p0.configure(bg="gray9")
+            self.p1.configure(bg="gray25")
             self.create_matrix()
             self.remove_node()
         elif self.phase == 2:
             self.instruction.configure(text="Left-click to select an end point"
                                        + "\nRight-click on it to deselect it")
             self.phase_status.configure(text="End point", fg="yellow")
+            self.p1.configure(bg="gray9")
+            self.p2.configure(bg="gray25")
         elif self.phase == 3:
             self.instruction.configure(text="Press \"D\" to run Dijkstra's algorithm or"
                                        + "\nPress \"A\" to run A* algorithm")
             self.next_label.configure(text="")
             self.phase_status.configure(text="")
+            self.p2.configure(bg="gray9")
+            self.p3.configure(bg="gray25")
             self.root.bind("<d>", lambda event: self.dijkstra(self.start_point, self.end_point))
 
     def add_barrier(self, arg):
