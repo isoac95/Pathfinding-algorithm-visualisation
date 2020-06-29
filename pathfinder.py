@@ -6,8 +6,8 @@ import time
 class App:
 
     def __init__(self):
-        self.rows = 20
-        self.columns = 20
+        self.rows = 30
+        self.columns = 60
         self.cell_size = 20
         self.phase = 0
         self.condition = True
@@ -77,6 +77,11 @@ class App:
     def to_str(self, num):
         return "i" + str(num // self.columns) + "j" + str(num % self.columns)
 
+    def return_ij(self, str):
+        i = int(str[str.find("i")+1: str.find("j")])
+        j = int(str[str.find("j")+1:])
+        return (i, j)
+
     def change_phase(self):
         if self.condition:
             self.phase += 1
@@ -105,7 +110,9 @@ class App:
             self.phase_status.configure(text="")
             self.p2.configure(bg="gray9")
             self.p3.configure(bg="gray25")
+            self.hcost_matrix = self.hcost_matrix(self.end_point)
             self.root.bind("<d>", lambda event: self.dijkstra(self.start_point, self.end_point))
+            self.root.bind("<a>", lambda event: self.a_star(self.start_point, self.end_point))
 
     def add_barrier(self, arg):
         self.current.configure(text=arg)
@@ -124,7 +131,7 @@ class App:
         elif (self.phase == 2 and self.end_point is None and arg not in self.barrier
               and arg != self.start_point):
             self.end_point = arg
-            print("End point is:", self.start_point)
+            print("End point is:", self.end_point)
             self.canvas.itemconfig(self.canvas.find_withtag(arg), fill="yellow")
             self.condition = True
 
@@ -223,6 +230,111 @@ class App:
                 self.canvas.itemconfig(self.canvas.find_withtag(node), fill="goldenrod")
         self.phase_status.configure(text="Path found!", fg="green")
         # return path, visited
+
+    def hcost_matrix(self, name):
+        matrix = np.zeros(self.rows*self.columns).reshape(self.rows, self.columns)
+        srow = int(name[name.find("i")+1: name.find("j")])
+        scol = int(name[name.find("j")+1:])
+        matrix[srow][scol] = 0
+        for i in range(self.rows):
+            for j in range(self.columns):
+                if i < srow and j < scol:
+                    new_i = i
+                    new_j = j
+                    count = 0
+                    while new_i != srow and new_j != scol:
+                        new_i += 1
+                        new_j += 1
+                        count += 1
+                    matrix[i][j] = abs(new_i-srow)*10 + abs(new_j - scol)*10 + count*14
+                elif i > srow and j < scol:
+                    new_i = i
+                    new_j = j
+                    count = 0
+                    while new_i != srow and new_j != scol:
+                        new_i -= 1
+                        new_j += 1
+                        count += 1
+                    matrix[i][j] = abs(new_i-srow)*10 + abs(new_j - scol)*10 + count*14
+                elif i > srow and j > scol:
+                    new_i = i
+                    new_j = j
+                    count = 0
+                    while new_i != srow and new_j != scol:
+                        new_i -= 1
+                        new_j -= 1
+                        count += 1
+                    matrix[i][j] = abs(new_i-srow)*10 + abs(new_j - scol)*10 + count*14
+                elif i < srow and j > scol:
+                    new_i = i
+                    new_j = j
+                    count = 0
+                    while new_i != srow and new_j != scol:
+                        new_i += 1
+                        new_j -= 1
+                        count += 1
+                    matrix[i][j] = abs(new_i-srow)*10 + abs(new_j - scol)*10 + count*14
+                else:
+                    matrix[i][j] = abs(i-srow)*10 + abs(j - scol)*10
+        return matrix
+
+    def a_star(self, start, end):
+        self.phase_status.configure(text="A* algorithm is running!", fg="green")
+        frontier = dict()
+        visited = dict()
+        start_row = self.return_ij(start)[0]
+        start_col = self.return_ij(start)[1]
+        start_hcost = self.hcost_matrix[start_row][start_col]
+        frontier = {start: [0, "starting index", start_hcost]}
+        while end not in visited:
+            if len(frontier) == 0:
+                self.phase_status.configure(text="No path available!", fg="red")
+                return None
+            min_dist = float("inf")
+            for item in frontier.items():
+                key = item[0]
+                item_fcost = item[1][0]
+                item_hcost = item[1][2]
+                dist = item_fcost + item_hcost
+                if dist < min_dist:
+                    min_dist = dist
+                    min_key = key
+                    min_fcost = item_fcost
+                    min_hcost = item_hcost
+                elif dist == min_dist and item_hcost < min_hcost:
+                    min_key = key
+                    min_fcost = item_fcost
+                    min_hcost = item_hcost
+
+            for index, item in enumerate(self.matrix[self.to_number(min_key)]):
+                if item != 0:
+                    key = self.to_str(index)
+                    hcost_row = self.return_ij(key)[0]
+                    hcost_col = self.return_ij(key)[1]
+                    hcost = self.hcost_matrix[hcost_row][hcost_col]
+                    fcost = min_fcost + item
+                    if key not in visited:
+                        if key not in frontier:
+                            frontier[key] = [fcost, min_key, hcost]
+                            if key != end:
+                                self.canvas.itemconfig(self.canvas.find_withtag(key),
+                                                       fill="PaleTurquoise1")
+                                self.canvas.update()
+                        else:
+                            if fcost + hcost < frontier[key][0] + frontier[key][2]:
+                                frontier[key] = [fcost, min_key, hcost]
+            time.sleep(0.01)
+            visited[min_key] = frontier.pop(min_key)
+            if min_key != start and min_key != end:
+                self.canvas.itemconfig(self.canvas.find_withtag(min_key), fill="DodgerBlue3")
+                self.canvas.update()
+        path = [visited[end][1]]
+        while path[0] != start:
+            path.insert(0, visited[path[0]][1])
+        for node in path:
+            if node != start:
+                self.canvas.itemconfig(self.canvas.find_withtag(node), fill="goldenrod")
+        self.phase_status.configure(text="Path found!", fg="green")
 
 
 if __name__ == "__main__":
