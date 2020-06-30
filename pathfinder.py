@@ -9,31 +9,20 @@ class App:
         self.rows = 30
         self.columns = 60
         self.cell_size = 20
-        self.phase = 0
-        self.condition = True
-        self.barrier = set()
-        self.start_point = None
-        self.end_point = None
         self.root = tk.Tk()
         self.root.title("Pathfinding algorithms by Ante Culo")
         self.root.configure(bg="gray9")
-        self.cursor = False
         self.create_ui()
-        self.create_field()
+        self.reset()
         self.root.mainloop()
 
     def create_ui(self):
         self.canvas = tk.Canvas(self.root, width=self.columns*self.cell_size,
                                 height=self.rows*self.cell_size, bd=0, highlightthickness=0)
-        self.root.bind("<p>", lambda event: self.change_phase())
-        self.root.bind("<space>", lambda event: self.set_cursor())
-        self.instruction = tk.Label(self.root, text="Press space to enable/disable cursor,"
-                                    + "\nRight-click to deselect", bg="gray9", fg="white")
+        self.instruction = tk.Label(self.root, text="\n\n", bg="gray9", fg="white")
         self.lbl_frame = tk.Frame(self.root, bg="gray9")
-        self.phase_status = tk.Label(self.root, text="Disabled cursor", fg="red", bg="gray9")
-        self.next_label = tk.Label(self.root, text="Press \"P\" when done", fg="white", bg="gray9")
-        self.current = tk.Label(self.root, text="")
-        self.p0 = tk.Label(self.lbl_frame, text="Create barrier", fg="white", bg="gray25")
+        self.status = tk.Label(self.root, text="", bg="gray9")
+        self.p0 = tk.Label(self.lbl_frame, text="Create barrier", fg="white", bg="gray9")
         self.p1 = tk.Label(self.lbl_frame, text="Start point", fg="white", bg="gray9")
         self.p2 = tk.Label(self.lbl_frame, text="End point", fg="white", bg="gray9")
         self.p3 = tk.Label(self.lbl_frame, text="Algorithm", fg="white", bg="gray9")
@@ -49,10 +38,19 @@ class App:
         self.p3.grid(row=0, column=6)
         self.lbl_frame.pack(pady=5)
         self.instruction.pack()
-        self.phase_status.pack()
+        self.status.pack()
         self.canvas.pack(padx=10)
-        self.next_label.pack()
-        self.current.pack()
+
+    def reset(self):
+        self.canvas.delete("all")
+        self.create_field()
+        self.start_point = None
+        self.end_point = None
+        self.phase = -1
+        self.condition = True
+        self.change_phase()
+        self.barrier = set()
+        self.cursor = False
 
     def create_field(self):
         y = 0
@@ -86,53 +84,75 @@ class App:
         if self.condition:
             self.phase += 1
             self.condition = False
-        print(self.phase)
-        if self.phase == 1:
+        print("Phase ", self.phase)
+        if self.phase == 0:
+            self.root.bind("<p>", lambda event: self.change_phase())
+            self.root.bind("<space>", lambda event: self.set_cursor())
+            self.instruction.configure(text="Press \"space\" to enable/disable cursor"
+                                            + "to quick-select"
+                                            + "\nPress Left-click/Right-click "
+                                            + "to single select/deselect"
+                                            + "\nPress \"P\" when done")
+            self.status.configure(text="Disabled cursor", fg="red")
+            self.p0.configure(bg="gray25")
+            self.condition = True
+        elif self.phase == 1:
+            print(self.barrier, len(self.barrier))
             for node in self.barrier:
                 self.canvas.itemconfig(self.canvas.find_withtag(node), fill="gray9", outline="")
             self.instruction.configure(text="Left-click to select a start point"
-                                       + "\nRight-click on it to deselect it")
-            self.phase_status.configure(text="Start point", fg="green")
+                                       + "\nRight-click on it to deselect it"
+                                       + "\nPress \"P\" when start point is selected")
+            self.status.configure(text="Start point is not selected", fg="red")
             self.p0.configure(bg="gray9")
             self.p1.configure(bg="gray25")
             self.create_matrix()
             self.remove_node()
         elif self.phase == 2:
             self.instruction.configure(text="Left-click to select an end point"
-                                       + "\nRight-click on it to deselect it")
-            self.phase_status.configure(text="End point", fg="yellow")
+                                       + "\nRight-click on it to deselect it"
+                                       + "\nPress \"P\" when end point is selected")
+            self.status.configure(text="End point is not selected", fg="red")
             self.p1.configure(bg="gray9")
             self.p2.configure(bg="gray25")
         elif self.phase == 3:
             self.instruction.configure(text="Press \"D\" to run Dijkstra's algorithm or"
-                                       + "\nPress \"A\" to run A* algorithm")
-            self.next_label.configure(text="")
-            self.phase_status.configure(text="")
+                                       + "\nPress \"A\" to run A* algorithm"
+                                       + "\n")
+            self.status.configure(text="")
             self.p2.configure(bg="gray9")
             self.p3.configure(bg="gray25")
-            self.hcost_matrix = self.hcost_matrix(self.end_point)
-            self.root.bind("<d>", lambda event: self.dijkstra(self.start_point, self.end_point))
-            self.root.bind("<a>", lambda event: self.a_star(self.start_point, self.end_point))
+            self.root.bind("<d>", lambda event: self.run_dijkstra())
+            self.root.bind("<a>", lambda event: self.run_a_star())
+        elif self.phase == 4:
+            self.instruction.configure(text="\nEnjoy simulation :)\n")
+        elif self.phase == 5:
+            self.root.bind("<r>", lambda event: self.reset())
+            self.p3.configure(bg="gray9")
+            self.instruction.configure(text="\nPress \"R\" to restart\n")
 
     def add_barrier(self, arg):
-        self.current.configure(text=arg)
         if self.phase == 0:
             if self.cursor:
                 self.barrier.add(arg)
                 self.canvas.itemconfig(self.canvas.find_withtag(arg), fill="red")
-                print(self.barrier, len(self.barrier))
 
     def left_click(self, arg):
-        if self.phase == 1 and self.start_point is None and arg not in self.barrier:
+        if self.phase == 0:
+            self.barrier.add(arg)
+            self.canvas.itemconfig(self.canvas.find_withtag(arg), fill="red")
+        elif self.phase == 1 and self.start_point is None and arg not in self.barrier:
             self.start_point = arg
             print("Start point is:", self.start_point)
             self.canvas.itemconfig(self.canvas.find_withtag(arg), fill="green")
+            self.status.configure(text="Start point is selected", fg="green")
             self.condition = True
         elif (self.phase == 2 and self.end_point is None and arg not in self.barrier
               and arg != self.start_point):
             self.end_point = arg
             print("End point is:", self.end_point)
             self.canvas.itemconfig(self.canvas.find_withtag(arg), fill="yellow")
+            self.status.configure(text="End point is selected", fg="green")
             self.condition = True
 
     def right_click(self, arg):
@@ -140,24 +160,25 @@ class App:
             if arg in self.barrier:
                 self.barrier.remove(arg)
                 self.canvas.itemconfig(self.canvas.find_withtag(arg), fill="gray25")
-                print(self.barrier, len(self.barrier))
         elif self.phase == 1 and self.start_point == arg:
             self.start_point = None
             self.canvas.itemconfig(self.canvas.find_withtag(arg), fill="gray25")
+            self.status.configure(text="Start point is not selected", fg="red")
             self.condition = False
         elif self.phase == 2 and self.end_point == arg:
             self.end_point = None
             self.canvas.itemconfig(self.canvas.find_withtag(arg), fill="gray25")
+            self.status.configure(text="End point is not selected", fg="red")
             self.condition = False
 
     def set_cursor(self):
         if self.phase == 0:
             if self.cursor is False:
                 self.cursor = True
-                self.phase_status.configure(text="Active cursor", fg="green")
+                self.status.configure(text="Active cursor", fg="green")
             else:
                 self.cursor = False
-                self.phase_status.configure(text="Disabled cursor", fg="red")
+                self.status.configure(text="Disabled cursor", fg="red")
 
     def create_matrix(self):
         n = self.rows * self.columns
@@ -187,14 +208,31 @@ class App:
             self.matrix[n] = 0
             self.matrix[:, n] = 0
 
+    def run_dijkstra(self):
+        if self.phase == 3:
+            self.condition = True
+            self.change_phase()
+            self.dijkstra(self.start_point, self.end_point)
+            self.condition = True
+            self.change_phase()
+
+    def run_a_star(self):
+        if self.phase == 3:
+            self.condition = True
+            self.change_phase()
+            self.hcost_matrix = self.create_hcost_matrix(self.end_point)
+            self.a_star(self.start_point, self.end_point)
+            self.condition = True
+            self.change_phase()
+
     def dijkstra(self, start, end):
-        self.phase_status.configure(text="Dijkstra's algorithm is running!", fg="green")
+        self.status.configure(text="Dijkstra's algorithm is running!", fg="green")
         frontier = dict()
         visited = dict()
         frontier = {start: [0, "starting index"]}
         while end not in visited:
             if len(frontier) == 0:
-                self.phase_status.configure(text="No path available!", fg="red")
+                self.status.configure(text="No path available!", fg="red")
                 return None
             min_dist = float("inf")
             for item in frontier.items():
@@ -228,10 +266,9 @@ class App:
         for node in path:
             if node != start:
                 self.canvas.itemconfig(self.canvas.find_withtag(node), fill="goldenrod")
-        self.phase_status.configure(text="Path found!", fg="green")
-        # return path, visited
+        self.status.configure(text="Path found!", fg="green")
 
-    def hcost_matrix(self, name):
+    def create_hcost_matrix(self, name):
         matrix = np.zeros(self.rows*self.columns).reshape(self.rows, self.columns)
         srow = int(name[name.find("i")+1: name.find("j")])
         scol = int(name[name.find("j")+1:])
@@ -279,7 +316,7 @@ class App:
         return matrix
 
     def a_star(self, start, end):
-        self.phase_status.configure(text="A* algorithm is running!", fg="green")
+        self.status.configure(text="A* algorithm is running!", fg="green")
         frontier = dict()
         visited = dict()
         start_row = self.return_ij(start)[0]
@@ -288,7 +325,7 @@ class App:
         frontier = {start: [0, "starting index", start_hcost]}
         while end not in visited:
             if len(frontier) == 0:
-                self.phase_status.configure(text="No path available!", fg="red")
+                self.status.configure(text="No path available!", fg="red")
                 return None
             min_dist = float("inf")
             for item in frontier.items():
@@ -334,7 +371,7 @@ class App:
         for node in path:
             if node != start:
                 self.canvas.itemconfig(self.canvas.find_withtag(node), fill="goldenrod")
-        self.phase_status.configure(text="Path found!", fg="green")
+        self.status.configure(text="Path found!", fg="green")
 
 
 if __name__ == "__main__":
